@@ -103,6 +103,7 @@ NRF52Bluetooth *nrf52Bluetooth = nullptr;
 
 #if HAS_BUTTON || defined(ARCH_PORTDUINO)
 #include "input/ButtonThread.h"
+#include "input/MultiButtonThread.h"
 
 #if defined(BUTTON_PIN_TOUCH)
 ButtonThread *TouchButtonThread = nullptr;
@@ -1086,8 +1087,107 @@ void setup()
 #define BUTTON_ACTIVE_PULLUP true
 #endif
 
-    // Buttons. Moved here cause we need NodeDB to be initialized
-    // If your variant.h has a BUTTON_PIN defined, go ahead and define BUTTON_ACTIVE_LOW and BUTTON_ACTIVE_PULLUP
+#ifdef PROMICRO_DIY_TCXO
+    // nRF52 ProMicro DIY Multi-Button Configuration
+    LOG_INFO("Initializing nRF52 ProMicro DIY Multi-Button System");
+    
+    // Main Button (P1.00) - Confirm/Shutdown
+    MainButtonThread = new MultiButtonThread("MainButton");
+    MultiButtonConfig mainConfig;
+    mainConfig.pinNumber = BUTTON_PIN;
+    mainConfig.activeLow = true;
+    mainConfig.activePullup = true;
+    mainConfig.pullupSense = pullup_sense;
+    mainConfig.intRoutine = []() {
+        MainButtonThread->userButton.tick();
+        MainButtonThread->setIntervalFromNow(0);
+        runASAP = true;
+        BaseType_t higherWake = 0;
+        mainDelay.interruptFromISR(&higherWake);
+    };
+    mainConfig.singlePress = INPUT_BROKER_SELECT;
+    mainConfig.longPress = INPUT_BROKER_SHUTDOWN;
+    mainConfig.longPressTime = 3000; // 3 seconds
+    MainButtonThread->initButton(mainConfig);
+    
+    // Up Button (P1.01) - Up Navigation/GPS Toggle
+    UpButtonThread = new MultiButtonThread("UpButton");
+    MultiButtonConfig upConfig;
+    upConfig.pinNumber = BUTTON_UP_PIN;
+    upConfig.activeLow = true;
+    upConfig.activePullup = true;
+    upConfig.pullupSense = pullup_sense;
+    upConfig.intRoutine = []() {
+        UpButtonThread->userButton.tick();
+        UpButtonThread->setIntervalFromNow(0);
+        runASAP = true;
+        BaseType_t higherWake = 0;
+        mainDelay.interruptFromISR(&higherWake);
+    };
+    upConfig.singlePress = INPUT_BROKER_UP;
+    upConfig.longPress = INPUT_BROKER_GPS_TOGGLE;
+    upConfig.longPressTime = 3000; // 3 seconds
+    UpButtonThread->initButton(upConfig);
+    
+    // Down Button (P1.02) - Down Navigation/Adhoc Ping
+    DownButtonThread = new MultiButtonThread("DownButton");
+    MultiButtonConfig downConfig;
+    downConfig.pinNumber = BUTTON_DOWN_PIN;
+    downConfig.activeLow = true;
+    downConfig.activePullup = true;
+    downConfig.pullupSense = pullup_sense;
+    downConfig.intRoutine = []() {
+        DownButtonThread->userButton.tick();
+        DownButtonThread->setIntervalFromNow(0);
+        runASAP = true;
+        BaseType_t higherWake = 0;
+        mainDelay.interruptFromISR(&higherWake);
+    };
+    downConfig.singlePress = INPUT_BROKER_DOWN;
+    downConfig.longPress = INPUT_BROKER_SEND_PING;
+    downConfig.longPressTime = 3000; // 3 seconds
+    DownButtonThread->initButton(downConfig);
+    
+    // Left Button (P1.06) - Left Navigation/DFU Mode
+    LeftButtonThread = new MultiButtonThread("LeftButton");
+    MultiButtonConfig leftConfig;
+    leftConfig.pinNumber = BUTTON_LEFT_PIN;
+    leftConfig.activeLow = true;
+    leftConfig.activePullup = true;
+    leftConfig.pullupSense = pullup_sense;
+    leftConfig.intRoutine = []() {
+        LeftButtonThread->userButton.tick();
+        LeftButtonThread->setIntervalFromNow(0);
+        runASAP = true;
+        BaseType_t higherWake = 0;
+        mainDelay.interruptFromISR(&higherWake);
+    };
+    leftConfig.singlePress = INPUT_BROKER_LEFT;
+    leftConfig.longPress = INPUT_BROKER_DFU_MODE;
+    leftConfig.longPressTime = 3000; // 3 seconds
+    LeftButtonThread->initButton(leftConfig);
+    
+    // Right Button (P1.07) - Right Navigation/No Function
+    RightButtonThread = new MultiButtonThread("RightButton");
+    MultiButtonConfig rightConfig;
+    rightConfig.pinNumber = BUTTON_RIGHT_PIN;
+    rightConfig.activeLow = true;
+    rightConfig.activePullup = true;
+    rightConfig.pullupSense = pullup_sense;
+    rightConfig.intRoutine = []() {
+        RightButtonThread->userButton.tick();
+        RightButtonThread->setIntervalFromNow(0);
+        runASAP = true;
+        BaseType_t higherWake = 0;
+        mainDelay.interruptFromISR(&higherWake);
+    };
+    rightConfig.singlePress = INPUT_BROKER_RIGHT;
+    rightConfig.longPress = INPUT_BROKER_NONE; // No function for long press
+    rightConfig.longPressTime = 3000; // 3 seconds
+    RightButtonThread->initButton(rightConfig);
+    
+#else
+    // Standard single button configuration for other boards
     UserButtonThread = new ButtonThread("UserButton");
     if (screen) {
         ButtonConfig userConfig;
@@ -1128,6 +1228,7 @@ void setup()
         userConfigNoScreen.triplePress = INPUT_BROKER_GPS_TOGGLE;
         UserButtonThread->initButton(userConfigNoScreen);
     }
+#endif
 #endif
 
 #endif

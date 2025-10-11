@@ -86,8 +86,12 @@ NRF52 PRO MICRO PIN ASSIGNMENT
 #define LED_BLUE PIN_LED1
 #define LED_STATE_ON 1 // State when LED is lit
 
-// Button
-#define BUTTON_PIN (32 + 0) // P1.00
+// Buttons - nRF52 ProMicro DIY Multi-Button Configuration
+#define BUTTON_PIN (32 + 0) // P1.00 - Main button (confirm/shutdown)
+#define BUTTON_UP_PIN (32 + 1) // P1.01 - Up navigation (up/GPS toggle)
+#define BUTTON_DOWN_PIN (32 + 2) // P1.02 - Down navigation (down/adhoc ping)
+#define BUTTON_LEFT_PIN (32 + 6) // P1.06 - Left navigation (left/DFU mode)
+#define BUTTON_RIGHT_PIN (32 + 7) // P1.07 - Right navigation (right/no function)
 
 // GPS
 #define PIN_GPS_TX (0 + 22) // P0.22

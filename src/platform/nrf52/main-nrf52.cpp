@@ -384,9 +384,22 @@ void cpuDeepSleep(uint32_t msecToWake)
 #endif
 
 #ifdef PROMICRO_DIY_TCXO
-        nrf_gpio_cfg_input(BUTTON_PIN, NRF_GPIO_PIN_PULLUP); // Enable internal pull-up on the button pin
-        nrf_gpio_pin_sense_t sense = NRF_GPIO_PIN_SENSE_LOW; // Configure SENSE signal on low edge
-        nrf_gpio_cfg_sense_set(BUTTON_PIN, sense);           // Apply SENSE to wake up the device from the deep sleep
+        // Configure all buttons for wake-up from deep sleep
+        nrf_gpio_cfg_input(BUTTON_PIN, NRF_GPIO_PIN_PULLUP); // P1.00 - Main button
+        nrf_gpio_pin_sense_t sense = NRF_GPIO_PIN_SENSE_LOW;
+        nrf_gpio_cfg_sense_set(BUTTON_PIN, sense);
+        
+        nrf_gpio_cfg_input(BUTTON_UP_PIN, NRF_GPIO_PIN_PULLUP); // P1.01 - Up button
+        nrf_gpio_cfg_sense_set(BUTTON_UP_PIN, sense);
+        
+        nrf_gpio_cfg_input(BUTTON_DOWN_PIN, NRF_GPIO_PIN_PULLUP); // P1.02 - Down button
+        nrf_gpio_cfg_sense_set(BUTTON_DOWN_PIN, sense);
+        
+        nrf_gpio_cfg_input(BUTTON_LEFT_PIN, NRF_GPIO_PIN_PULLUP); // P1.06 - Left button
+        nrf_gpio_cfg_sense_set(BUTTON_LEFT_PIN, sense);
+        
+        nrf_gpio_cfg_input(BUTTON_RIGHT_PIN, NRF_GPIO_PIN_PULLUP); // P1.07 - Right button
+        nrf_gpio_cfg_sense_set(BUTTON_RIGHT_PIN, sense);
 #endif
 
         auto ok = sd_power_system_off();

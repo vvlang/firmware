@@ -114,6 +114,13 @@ int SystemCommandsModule::handleInputEvent(const InputEvent *event)
     case INPUT_BROKER_SHUTDOWN:
         shutdownAtMsec = millis();
         return true;
+    // DFU mode
+    case INPUT_BROKER_DFU_MODE:
+        LOG_INFO("Entering DFU mode");
+#if defined(ARCH_NRF52) || defined(ARCH_RP2040)
+        enterDfuMode();
+#endif
+        return true;
 
     default:
         // No other input events handled here
