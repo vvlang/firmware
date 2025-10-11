@@ -1,0 +1,287 @@
+name: 自动编译所有设备固件
+
+on:
+  schedule:
+    # 每天UTC 2:00自动编译
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      devices:
+        description: '要编译的设备列表（逗号分隔）'
+        required: false
+        default: 'nrf52_promicro_diy_tcxo,tbeam,heltec_v2'
+        type: string
+      build_type:
+        description: '编译类型'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - nrf52
+          - esp32
+          - rp2040
+          - stm32
+      release_build:
+        description: '是否为发布版本'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        include:
+          # nRF52 设备
+          - device: nrf52_promicro_diy_tcxo
+            platform: nRF52
+            description: "nRF52 ProMicro DIY with TCXO"
+            category: nrf52
+          - device: nrf52_promicro_diy_xtal
+            platform: nRF52
+            description: "nRF52 ProMicro DIY with XTAL"
+            category: nrf52
+          - device: heltec_mesh_pocket
+            platform: nRF52
+            description: "Heltec Mesh Pocket"
+            category: nrf52
+          
+          # ESP32 设备
+          - device: tbeam
+            platform: ESP32
+            description: "T-Beam"
+            category: esp32
+          - device: heltec_v2
+            platform: ESP32
+            description: "Heltec Wireless Tracker V2"
+            category: esp32
+          - device: tbeam-s3-core
+            platform: ESP32
+            description: "T-Beam S3 Core"
+            category: esp32
+          
+          # RP2040 设备
+          - device: rpipico
+            platform: RP2040
+            description: "Raspberry Pi Pico"
+            category: rp2040
+          - device: rpipicow
+            platform: RP2040
+            description: "Raspberry Pi Pico W"
+            category: rp2040
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 安装 PlatformIO
+      run: |
+        pip install platformio
+        pio --version
+    
+    - name: 安装依赖
+      run: |
+        pio lib install
+        pio platform install nordicnrf52
+        pio platform install espressif32
+        pio platform install raspberry-pi
+    
+    - name: 编译固件
+      run: |
+        echo "编译设备: ${{ matrix.device }}"
+        echo "设备描述: ${{ matrix.description }}"
+        echo "平台: ${{ matrix.platform }}"
+        echo "分类: ${{ matrix.category }}"
+        
+        # 检查设备是否在编译列表中
+        if [ "${{ github.event.inputs.devices }}" != "" ]; then
+          if [[ "${{ github.event.inputs.devices }}" != *"${{ matrix.device }}"* ]]; then
+            echo "跳过设备: ${{ matrix.device }} (不在编译列表中)"
+            exit 0
+          fi
+        fi
+        
+        # 检查编译类型
+        if [ "${{ github.event.inputs.build_type }}" != "all" ] && [ "${{ github.event.inputs.build_type }}" != "${{ matrix.category }}" ]; then
+          echo "跳过设备: ${{ matrix.device }} (不匹配编译类型 ${{ github.event.inputs.build_type }})"
+          exit 0
+        fi
+        
+        echo "开始编译设备: ${{ matrix.device }}"
+        pio run -e ${{ matrix.device }} -v
+    
+    - name: 检查编译产物
+      run: |
+        echo "检查编译产物..."
+        ls -la .pio/build/${{ matrix.device }}/
+        
+        # 检查关键文件是否存在
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.uf2" ]; then
+          echo "✅ UF2文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.uf2
+        else
+          echo "⚠️ UF2文件不存在（某些设备可能不支持UF2格式）"
+        fi
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.hex" ]; then
+          echo "✅ HEX文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.hex
+        else
+          echo "⚠️ HEX文件不存在（某些设备可能不支持HEX格式）"
+        fi
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.bin" ]; then
+          echo "✅ BIN文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.bin
+        else
+          echo "⚠️ BIN文件不存在（某些设备可能不支持BIN格式）"
+        fi
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.zip" ]; then
+          echo "✅ ZIP文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.zip
+        else
+          echo "❌ ZIP文件生成失败"
+          exit 1
+        fi
+    
+    - name: 获取固件信息
+      id: firmware-info
+      run: |
+        # 获取固件版本
+        if [ -f ".pio/build/${{ matrix.device }}/src/version.h" ]; then
+          FIRMWARE_VERSION=$(grep "APP_VERSION=" .pio/build/${{ matrix.device }}/src/version.h | cut -d'"' -f2)
+        else
+          FIRMWARE_VERSION="unknown"
+        fi
+        echo "firmware_version=$FIRMWARE_VERSION" >> $GITHUB_OUTPUT
+        
+        # 获取编译时间
+        BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
+        
+        # 获取Git提交信息
+        GIT_COMMIT=$(git rev-parse --short HEAD)
+        echo "git_commit=$GIT_COMMIT" >> $GITHUB_OUTPUT
+        
+        # 获取文件大小
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.uf2" ]; then
+          UF2_SIZE=$(stat -c%s .pio/build/${{ matrix.device }}/firmware.uf2)
+        else
+          UF2_SIZE=0
+        fi
+        echo "uf2_size=$UF2_SIZE" >> $GITHUB_OUTPUT
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.hex" ]; then
+          HEX_SIZE=$(stat -c%s .pio/build/${{ matrix.device }}/firmware.hex)
+        else
+          HEX_SIZE=0
+        fi
+        echo "hex_size=$HEX_SIZE" >> $GITHUB_OUTPUT
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.bin" ]; then
+          BIN_SIZE=$(stat -c%s .pio/build/${{ matrix.device }}/firmware.bin)
+        else
+          BIN_SIZE=0
+        fi
+        echo "bin_size=$BIN_SIZE" >> $GITHUB_OUTPUT
+    
+    - name: 创建发布包
+      run: |
+        mkdir -p release/${{ matrix.device }}
+        
+        # 复制固件文件
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.uf2" ]; then
+          cp .pio/build/${{ matrix.device }}/firmware.uf2 release/${{ matrix.device }}/
+        fi
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.hex" ]; then
+          cp .pio/build/${{ matrix.device }}/firmware.hex release/${{ matrix.device }}/
+        fi
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.bin" ]; then
+          cp .pio/build/${{ matrix.device }}/firmware.bin release/${{ matrix.device }}/
+        fi
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.zip" ]; then
+          cp .pio/build/${{ matrix.device }}/firmware.zip release/${{ matrix.device }}/
+        fi
+        
+        # 创建固件信息文件
+        cat > release/${{ matrix.device }}/firmware_info.txt << EOF
+固件信息
+========
+设备: ${{ matrix.device }}
+描述: ${{ matrix.description }}
+平台: ${{ matrix.platform }}
+分类: ${{ matrix.category }}
+版本: ${{ steps.firmware-info.outputs.firmware_version }}
+编译时间: ${{ steps.firmware-info.outputs.build_time }}
+Git提交: ${{ steps.firmware-info.outputs.git_commit }}
+UF2大小: ${{ steps.firmware-info.outputs.uf2_size }} 字节
+HEX大小: ${{ steps.firmware-info.outputs.hex_size }} 字节
+BIN大小: ${{ steps.firmware-info.outputs.bin_size }} 字节
+
+文件说明
+========
+EOF
+        
+        if [ -f "release/${{ matrix.device }}/firmware.uf2" ]; then
+          echo "firmware.uf2  - USB烧录文件，可直接拖拽到设备" >> release/${{ matrix.device }}/firmware_info.txt
+        fi
+        if [ -f "release/${{ matrix.device }}/firmware.hex" ]; then
+          echo "firmware.hex  - 传统烧录工具使用的HEX文件" >> release/${{ matrix.device }}/firmware_info.txt
+        fi
+        if [ -f "release/${{ matrix.device }}/firmware.bin" ]; then
+          echo "firmware.bin  - 二进制固件文件" >> release/${{ matrix.device }}/firmware_info.txt
+        fi
+        if [ -f "release/${{ matrix.device }}/firmware.zip" ]; then
+          echo "firmware.zip  - 包含所有编译产物的压缩包" >> release/${{ matrix.device }}/firmware_info.txt
+        fi
+        
+        cat >> release/${{ matrix.device }}/firmware_info.txt << EOF
+
+使用方法
+========
+1. 将设备连接到电脑
+2. 根据设备类型选择相应的烧录方法
+3. 设备将自动重启并加载新固件
+
+注意事项
+========
+- 确保设备支持对应的配置
+- 烧录前请备份重要数据
+- 如遇问题请检查设备连接和驱动
+EOF
+        
+        echo "发布包创建完成"
+        ls -la release/${{ matrix.device }}/
+    
+    - name: 上传编译产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.device }}-${{ steps.firmware-info.outputs.firmware_version }}
+        path: release/${{ matrix.device }}/
+        retention-days: 30
+    
+    - name: 发送编译结果通知
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 编译成功: ${{ matrix.device }}"
+          echo "固件版本: ${{ steps.firmware-info.outputs.firmware_version }}"
+          echo "编译时间: ${{ steps.firmware-info.outputs.build_time }}"
+          echo "平台: ${{ matrix.platform }}"
+          echo "分类: ${{ matrix.category }}"
+        else
+          echo "❌ 编译失败: ${{ matrix.device }}"
+          echo "平台: ${{ matrix.platform }}"
+          echo "分类: ${{ matrix.category }}"
+        fi

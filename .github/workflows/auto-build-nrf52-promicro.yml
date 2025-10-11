@@ -1,0 +1,260 @@
+name: 自动编译 nRF52 ProMicro DIY 固件
+
+on:
+  push:
+    branches: [ develop, master ]
+    paths:
+      - 'src/input/MultiButtonThread.*'
+      - 'src/main.cpp'
+      - 'src/main.h'
+      - 'src/input/InputBroker.h'
+      - 'src/modules/SystemCommandsModule.cpp'
+      - 'src/platform/nrf52/main-nrf52.cpp'
+      - 'variants/nrf52840/diy/nrf52_promicro_diy_tcxo/**'
+      - 'nRF52_ProMicro_DIY_Button_Implementation*.md'
+  pull_request:
+    branches: [ develop, master ]
+    paths:
+      - 'src/input/MultiButtonThread.*'
+      - 'src/main.cpp'
+      - 'src/main.h'
+      - 'src/input/InputBroker.h'
+      - 'src/modules/SystemCommandsModule.cpp'
+      - 'src/platform/nrf52/main-nrf52.cpp'
+      - 'variants/nrf52840/diy/nrf52_promicro_diy_tcxo/**'
+      - 'nRF52_ProMicro_DIY_Button_Implementation*.md'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '编译类型'
+        required: true
+        default: 'nrf52_promicro_diy_tcxo'
+        type: choice
+        options:
+          - nrf52_promicro_diy_tcxo
+          - nrf52_promicro_diy_xtal
+      release_build:
+        description: '是否为发布版本'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-nrf52-promicro:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        include:
+          - device: nrf52_promicro_diy_tcxo
+            description: "nRF52 ProMicro DIY with TCXO"
+          - device: nrf52_promicro_diy_xtal
+            description: "nRF52 ProMicro DIY with XTAL"
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 安装 PlatformIO
+      run: |
+        pip install platformio
+        pio --version
+    
+    - name: 安装依赖
+      run: |
+        pio lib install
+        pio platform install nordicnrf52
+    
+    - name: 编译固件
+      run: |
+        echo "编译设备: ${{ matrix.device }}"
+        echo "设备描述: ${{ matrix.description }}"
+        pio run -e ${{ matrix.device }} -v
+    
+    - name: 检查编译产物
+      run: |
+        echo "检查编译产物..."
+        ls -la .pio/build/${{ matrix.device }}/
+        
+        # 检查关键文件是否存在
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.uf2" ]; then
+          echo "✅ UF2文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.uf2
+        else
+          echo "❌ UF2文件生成失败"
+          exit 1
+        fi
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.hex" ]; then
+          echo "✅ HEX文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.hex
+        else
+          echo "❌ HEX文件生成失败"
+          exit 1
+        fi
+        
+        if [ -f ".pio/build/${{ matrix.device }}/firmware.zip" ]; then
+          echo "✅ ZIP文件生成成功"
+          ls -lh .pio/build/${{ matrix.device }}/firmware.zip
+        else
+          echo "❌ ZIP文件生成失败"
+          exit 1
+        fi
+    
+    - name: 获取固件信息
+      id: firmware-info
+      run: |
+        # 获取固件版本
+        FIRMWARE_VERSION=$(grep "APP_VERSION=" .pio/build/${{ matrix.device }}/src/version.h | cut -d'"' -f2)
+        echo "firmware_version=$FIRMWARE_VERSION" >> $GITHUB_OUTPUT
+        
+        # 获取编译时间
+        BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
+        
+        # 获取Git提交信息
+        GIT_COMMIT=$(git rev-parse --short HEAD)
+        echo "git_commit=$GIT_COMMIT" >> $GITHUB_OUTPUT
+        
+        # 获取文件大小
+        UF2_SIZE=$(stat -c%s .pio/build/${{ matrix.device }}/firmware.uf2)
+        echo "uf2_size=$UF2_SIZE" >> $GITHUB_OUTPUT
+        
+        HEX_SIZE=$(stat -c%s .pio/build/${{ matrix.device }}/firmware.hex)
+        echo "hex_size=$HEX_SIZE" >> $GITHUB_OUTPUT
+    
+    - name: 创建发布包
+      run: |
+        mkdir -p release/${{ matrix.device }}
+        
+        # 复制固件文件
+        cp .pio/build/${{ matrix.device }}/firmware.uf2 release/${{ matrix.device }}/
+        cp .pio/build/${{ matrix.device }}/firmware.hex release/${{ matrix.device }}/
+        cp .pio/build/${{ matrix.device }}/firmware.zip release/${{ matrix.device }}/
+        
+        # 创建固件信息文件
+        cat > release/${{ matrix.device }}/firmware_info.txt << EOF
+固件信息
+========
+设备: ${{ matrix.device }}
+描述: ${{ matrix.description }}
+版本: ${{ steps.firmware-info.outputs.firmware_version }}
+编译时间: ${{ steps.firmware-info.outputs.build_time }}
+Git提交: ${{ steps.firmware-info.outputs.git_commit }}
+UF2大小: ${{ steps.firmware-info.outputs.uf2_size }} 字节
+HEX大小: ${{ steps.firmware-info.outputs.hex_size }} 字节
+
+文件说明
+========
+firmware.uf2  - USB烧录文件，可直接拖拽到设备
+firmware.hex  - 传统烧录工具使用的HEX文件
+firmware.zip  - 包含所有编译产物的压缩包
+
+使用方法
+========
+1. 将设备连接到电脑
+2. 将firmware.uf2文件拖拽到设备存储
+3. 设备将自动重启并加载新固件
+
+注意事项
+========
+- 确保设备支持nRF52 ProMicro DIY配置
+- 烧录前请备份重要数据
+- 如遇问题请检查设备连接和驱动
+EOF
+        
+        # 创建README文件
+        cat > release/${{ matrix.device }}/README.md << EOF
+# ${{ matrix.description }} 固件
+
+## 固件信息
+- **版本**: ${{ steps.firmware-info.outputs.firmware_version }}
+- **编译时间**: ${{ steps.firmware-info.outputs.build_time }}
+- **Git提交**: ${{ steps.firmware-info.outputs.git_commit }}
+
+## 多按钮功能
+本固件包含完整的nRF52 ProMicro DIY多按钮支持：
+
+| 按钮 | 引脚 | 短按功能 | 长按功能 (3秒) |
+|------|------|----------|----------------|
+| P1.00 | P1.00 | 确认选择 | 关机 |
+| P1.01 | P1.01 | 向上导航 | 切换GPS模式 |
+| P1.02 | P1.02 | 向下导航 | 发送adhoc ping |
+| P1.06 | P1.06 | 向左导航 | 刷机模式 (DFU) |
+| P1.07 | P1.07 | 向右导航 | 无功能 |
+
+## 烧录方法
+1. 将设备连接到电脑
+2. 将 \`firmware.uf2\` 文件拖拽到设备存储
+3. 设备将自动重启并加载新固件
+
+## 文件说明
+- \`firmware.uf2\` - USB烧录文件
+- \`firmware.hex\` - 传统烧录工具使用的HEX文件
+- \`firmware.zip\` - 包含所有编译产物的压缩包
+EOF
+        
+        echo "发布包创建完成"
+        ls -la release/${{ matrix.device }}/
+    
+    - name: 上传编译产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.device }}-${{ steps.firmware-info.outputs.firmware_version }}
+        path: release/${{ matrix.device }}/
+        retention-days: 30
+    
+    - name: 创建GitHub Release (仅限发布版本)
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.firmware-info.outputs.firmware_version }}-${{ matrix.device }}
+        name: ${{ matrix.description }} 固件 v${{ steps.firmware-info.outputs.firmware_version }}
+        body: |
+          ## ${{ matrix.description }} 固件发布
+          
+          ### 固件信息
+          - **版本**: ${{ steps.firmware-info.outputs.firmware_version }}
+          - **编译时间**: ${{ steps.firmware-info.outputs.build_time }}
+          - **Git提交**: ${{ steps.firmware-info.outputs.git_commit }}
+          
+          ### 多按钮功能
+          本固件包含完整的nRF52 ProMicro DIY多按钮支持，支持5个独立按钮的短按和长按功能。
+          
+          ### 下载文件
+          - \`firmware.uf2\` - USB烧录文件
+          - \`firmware.hex\` - 传统烧录工具使用的HEX文件
+          - \`firmware.zip\` - 包含所有编译产物的压缩包
+          
+          ### 烧录方法
+          1. 将设备连接到电脑
+          2. 将 \`firmware.uf2\` 文件拖拽到设备存储
+          3. 设备将自动重启并加载新固件
+        files: |
+          release/${{ matrix.device }}/firmware.uf2
+          release/${{ matrix.device }}/firmware.hex
+          release/${{ matrix.device }}/firmware.zip
+          release/${{ matrix.device }}/firmware_info.txt
+          release/${{ matrix.device }}/README.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: 发送通知
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 编译成功: ${{ matrix.device }}"
+          echo "固件版本: ${{ steps.firmware-info.outputs.firmware_version }}"
+          echo "编译时间: ${{ steps.firmware-info.outputs.build_time }}"
+        else
+          echo "❌ 编译失败: ${{ matrix.device }}"
+        fi

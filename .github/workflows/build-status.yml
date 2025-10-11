@@ -1,0 +1,47 @@
+name: 编译状态监控
+
+on:
+  workflow_run:
+    workflows: ["自动编译 nRF52 ProMicro DIY 固件", "自动编译所有设备固件"]
+    types: [completed]
+
+jobs:
+  notify-status:
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 检查编译状态
+      run: |
+        echo "检查编译状态..."
+        echo "工作流: ${{ github.event.workflow_run.name }}"
+        echo "状态: ${{ github.event.workflow_run.conclusion }}"
+        echo "提交: ${{ github.event.workflow_run.head_commit.message }}"
+        echo "分支: ${{ github.event.workflow_run.head_branch }}"
+    
+    - name: 发送成功通知
+      if: github.event.workflow_run.conclusion == 'success'
+      run: |
+        echo "✅ 编译成功!"
+        echo "工作流: ${{ github.event.workflow_run.name }}"
+        echo "提交: ${{ github.event.workflow_run.head_commit.message }}"
+        echo "分支: ${{ github.event.workflow_run.head_branch }}"
+        echo "查看详情: ${{ github.event.workflow_run.html_url }}"
+    
+    - name: 发送失败通知
+      if: github.event.workflow_run.conclusion == 'failure'
+      run: |
+        echo "❌ 编译失败!"
+        echo "工作流: ${{ github.event.workflow_run.name }}"
+        echo "提交: ${{ github.event.workflow_run.head_commit.message }}"
+        echo "分支: ${{ github.event.workflow_run.head_branch }}"
+        echo "查看详情: ${{ github.event.workflow_run.html_url }}"
+    
+    - name: 发送取消通知
+      if: github.event.workflow_run.conclusion == 'cancelled'
+      run: |
+        echo "⚠️ 编译被取消!"
+        echo "工作流: ${{ github.event.workflow_run.name }}"
+        echo "提交: ${{ github.event.workflow_run.head_commit.message }}"
+        echo "分支: ${{ github.event.workflow_run.head_branch }}"
+        echo "查看详情: ${{ github.event.workflow_run.html_url }}"
