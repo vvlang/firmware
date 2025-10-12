@@ -128,3 +128,4 @@ if __name__ == "__main__":
     print(f"📊 数据大小: {len(ascii_data)} 字节")
     print(f"🔢 字符数量: {len(ascii_data) // 18} 个")
 
+

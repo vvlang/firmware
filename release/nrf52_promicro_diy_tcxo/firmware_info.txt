@@ -1,36 +1,6 @@
-nRF52 ProMicro DIY TCXO 固件信息
-=====================================
-
-编译时间: 2025年10月12日 16:31
-固件版本: 最新develop分支
-硬件平台: nRF52840 ProMicro DIY TCXO
-
-固件特性:
-- ✅ nRF52 ProMicro DIY 多按钮功能
-- ✅ 最新仓库更新 (19个文件更新)
-- ✅ 蓝牙连接数增加到6个
-- ✅ XPowersLib v0.3.1
-- ✅ 电源检测改进
-- ✅ NimBLE性能优化
-
-文件说明:
-- firmware.uf2: USB Flashing Format (1.4MB) - 推荐用于直接刷写
-- firmware.hex: Intel HEX格式 (2.1MB) - 用于专业烧录工具
-- firmware.zip: DFU包 (739KB) - 用于DFU升级
-- firmware.elf: ELF可执行文件 (35.1MB) - 用于调试
-
-内存使用情况:
-- RAM: 31.6% (78,716 / 248,832 字节)
-- Flash: 90.6% (738,312 / 815,104 字节)
-
-编译环境:
-- PlatformIO Core 6.1.15
-- nRF5 SDK 17.1.0
-- GCC 11.3.0
-
-更新内容:
-- CI工作流优化
-- 蓝牙连接数增加 (3→6)
-- XPowersLib更新到v0.3.1
-- 电源检测改进
-- NimBLE性能优化
+固件版本: 2025-10-12 21:55:17
+编译环境: nrf52_promicro_diy_tcxo
+字库: 默认英文字库
+Flash使用率: 90.6%
+RAM使用率: 31.6%
+传感器支持: 完整支持所有环境传感器

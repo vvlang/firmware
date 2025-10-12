@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+
 #define getStringCenteredX(s) ((SCREEN_WIDTH - display->getStringWidth(s)) / 2)
 namespace graphics
 {
@@ -386,6 +387,7 @@ class Screen : public concurrency::OSThread
         // We want to strip out prefix chars for two-byte char formats
         if (ch == 0xC2 || ch == 0xC3)
             return (uint8_t)0;
+
 
 #if defined(OLED_PL)
 
