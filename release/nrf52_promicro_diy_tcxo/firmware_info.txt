@@ -1,66 +1,36 @@
-nRF52 ProMicro DIY 多按钮功能固件信息
-==========================================
+nRF52 ProMicro DIY TCXO 固件信息
+=====================================
 
-设备信息
---------
-设备型号: nRF52 ProMicro DIY with TCXO
-固件类型: Meshtastic Firmware
-编译时间: 2024-10-11 15:15:00 UTC
-Git提交: 78bf09aa
-分支: develop
+编译时间: 2025年10月12日 16:31
+固件版本: 最新develop分支
+硬件平台: nRF52840 ProMicro DIY TCXO
 
-固件特性
---------
-✅ 5个独立按钮支持 (P1.00, P1.01, P1.02, P1.06, P1.07)
-✅ 短按功能: 导航控制 (上下左右、确认选择)
-✅ 长按功能: 系统功能 (关机、GPS切换、adhoc ping、DFU模式)
-✅ 深度睡眠唤醒支持
-✅ 3秒长按时间设置
-✅ 完全集成到Meshtastic系统
+固件特性:
+- ✅ nRF52 ProMicro DIY 多按钮功能
+- ✅ 最新仓库更新 (19个文件更新)
+- ✅ 蓝牙连接数增加到6个
+- ✅ XPowersLib v0.3.1
+- ✅ 电源检测改进
+- ✅ NimBLE性能优化
 
-按钮映射
---------
-P1.00: 确认选择 / 关机 (3秒长按)
-P1.01: 向上导航 / 切换GPS模式 (3秒长按)
-P1.02: 向下导航 / 发送adhoc ping (3秒长按)
-P1.06: 向左导航 / 刷机模式 (3秒长按)
-P1.07: 向右导航 / 无功能
+文件说明:
+- firmware.uf2: USB Flashing Format (1.4MB) - 推荐用于直接刷写
+- firmware.hex: Intel HEX格式 (2.1MB) - 用于专业烧录工具
+- firmware.zip: DFU包 (739KB) - 用于DFU升级
+- firmware.elf: ELF可执行文件 (35.1MB) - 用于调试
 
-文件信息
---------
-firmware.uf2  - USB烧录文件 (1.5MB)
-firmware.hex  - 传统烧录工具使用的HEX文件 (2.1MB)
-firmware.zip  - 包含所有编译产物的压缩包 (765KB)
+内存使用情况:
+- RAM: 31.6% (78,716 / 248,832 字节)
+- Flash: 90.6% (738,312 / 815,104 字节)
 
-内存使用
---------
-RAM使用: 31.6% (78,716 / 248,832 字节)
-Flash使用: 96.1% (782,920 / 815,104 字节)
+编译环境:
+- PlatformIO Core 6.1.15
+- nRF5 SDK 17.1.0
+- GCC 11.3.0
 
-烧录方法
---------
-1. 将nRF52 ProMicro DIY设备连接到电脑
-2. 将firmware.uf2文件拖拽到设备存储
-3. 设备将自动重启并加载新固件
-
-注意事项
---------
-- 确保设备支持nRF52 ProMicro DIY配置
-- 烧录前请备份重要数据
-- 如遇问题请检查设备连接和驱动
-- 首次烧录可能需要安装驱动
-
-技术支持
---------
-- GitHub仓库: https://github.com/vvlang/firmware
-- 问题报告: https://github.com/vvlang/firmware/issues
-- 技术讨论: https://github.com/vvlang/firmware/discussions
-- 中文说明: nRF52_ProMicro_DIY_Button_Implementation_CN.md
-
-版本历史
---------
-v1.0.0 - 初始版本
-- 实现5个独立按钮的短按和长按功能
-- 支持深度睡眠唤醒
-- 集成DFU模式支持
-- 完全集成到Meshtastic系统
+更新内容:
+- CI工作流优化
+- 蓝牙连接数增加 (3→6)
+- XPowersLib更新到v0.3.1
+- 电源检测改进
+- NimBLE性能优化

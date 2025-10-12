@@ -121,12 +121,12 @@ NRF52 PRO MICRO PIN ASSIGNMENT
 #define LORA_SCK PIN_SPI_SCK
 #define LORA_CS (32 + 13) // P1.13
 
-// LORA MODULES
-#define USE_LLCC68
-#define USE_SX1262
-#define USE_RF95
-#define USE_SX1268
-#define USE_LR1121
+// LORA MODULES - 优化配置：只保留SX1262支持
+// #define USE_LLCC68    // 注释掉LLCC68模块
+#define USE_SX1262      // 保留SX1262模块
+// #define USE_RF95      // 注释掉RFM95模块
+// #define USE_SX1268    // 注释掉SX1268模块
+// #define USE_LR1121    // 注释掉LR1121模块
 
 // RF95 CONFIG
 
@@ -189,11 +189,11 @@ settings.
 #define SX126X_DIO3_TCXO_VOLTAGE 1.8
 #define TCXO_OPTIONAL // make it so that the firmware can try both TCXO and XTAL
 
-// E-Ink DIY
-#define PIN_EINK_CS (32 + 7)
-#define PIN_EINK_DC (32 + 2)
-#define PIN_EINK_RES (32 + 1)
-#define PIN_EINK_BUSY (32 + 6)
+// E-Ink DIY - 优化配置：注释掉E-Ink支持以减小固件大小
+// #define PIN_EINK_CS (32 + 7)   // 注释掉E-Ink片选
+// #define PIN_EINK_DC (32 + 2)   // 注释掉E-Ink数据/命令
+// #define PIN_EINK_RES (32 + 1)  // 注释掉E-Ink复位
+// #define PIN_EINK_BUSY (32 + 6) // 注释掉E-Ink忙信号
 
 #ifdef __cplusplus
 }
